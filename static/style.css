@@ -179,6 +179,8 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 28px;
+    position: relative;
+    z-index: 10;
     animation: fadeInUp 0.8s var(--ease-out) 0.1s both;
 }
 
@@ -333,6 +335,8 @@ body {
     flex-direction: row;
     gap: 16px;
     width: 100%;
+    position: relative;
+    z-index: 20;
 }
 
 .control-group {
