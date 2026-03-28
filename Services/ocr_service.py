@@ -14,6 +14,6 @@ def extract_text(file_bytes: bytes, filename) -> str:
 
     #Image handeling
     else:
-        
+        pass
 
     return extracted_text
