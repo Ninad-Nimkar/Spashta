@@ -23,16 +23,22 @@ def extract_text(file_bytes: bytes, filename) -> str:
         base64_image = base64.b64decode(file_bytes).decode("utf-8")
 
         response = client.chat.completions.create(
-            model="gpt-4o-mini"
-            messages=[{"role": "user", 
-                       "content": [{"type": "text", "text": "Extracty all the text fro this page. Return Only the text."},
-                                    "type": "image_url",
-                                    "image_url": {"url": f"data:image/png;base64,{base64_image}
-                                                },
-                                            ],
-                                        }
-                                    ],
-                                    max_tokens=1500
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Extract all text from this image. Return only the text."},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{base64_image}"
+                            },
+                        },
+                    ],
+                }
+            ],
+            max_tokens=1500,
         )
         extracted_text = response.choices[0].message.content
         return extracted_text
