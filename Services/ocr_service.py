@@ -1,5 +1,5 @@
 import pdfplumber
-import pytesseract
+
 from PIL import Image
 import io
 
