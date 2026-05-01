@@ -1,31 +1,33 @@
-/* ======================================================
-   LearnFlow — Script
-   ====================================================== */
-
+// Wrap everything in an IIFE (Immediately Invoked Function Expression)
+// This keeps all our variables private — nothing leaks to the global scope
 (() => {
     'use strict';
 
     // ── DOM refs ──────────────────────────────────────
-    const textInput = document.getElementById('text-input');
-    const btnGenerate = document.getElementById('btn-generate');
-    const btnLoader = document.getElementById('btn-loader');
-    const outputSection = document.getElementById('output-section');
-    const playBtn = document.getElementById('play-btn');
-    const iconPlay = document.getElementById('icon-play');
-    const iconPause = document.getElementById('icon-pause');
-    const progressBar = document.getElementById('progress-bar');
-    const progress = document.getElementById('progress');
-    const thumb = document.getElementById('thumb');
-    const currentTimeEl = document.getElementById('current-time');
-    const durationEl = document.getElementById('duration');
-    const audioElement = document.getElementById('audio-element');
-    const transcriptBody = document.getElementById('transcript-body');
-
-    // Custom dropdown refs
+    // Grab every element we need from the HTML upfront
+    // document.getElementById finds an element by its id attribute
+    const textInput       = document.getElementById('text-input');
+    const btnGenerate     = document.getElementById('btn-generate');
+    const btnLoader       = document.getElementById('btn-loader');
+    const outputSection   = document.getElementById('output-section');
+    const playBtn         = document.getElementById('play-btn');
+    const iconPlay        = document.getElementById('icon-play');
+    const iconPause       = document.getElementById('icon-pause');
+    const progressBar     = document.getElementById('progress-bar');
+    const progress        = document.getElementById('progress');
+    const thumb           = document.getElementById('thumb');
+    const currentTimeEl   = document.getElementById('current-time');
+    const durationEl      = document.getElementById('duration');
+    const audioElement    = document.getElementById('audio-element');
+    const transcriptBody  = document.getElementById('transcript-body');
     const dropdownLanguage = document.getElementById('dropdown-language');
-    const dropdownStyle = document.getElementById('dropdown-style');
+    const dropdownStyle   = document.getElementById('dropdown-style');
+
 
     // ── Helpers ───────────────────────────────────────
+
+    // Converts seconds into m:ss format for the audio player
+    // Example: 90 seconds becomes "1:30"
     function formatTime(s) {
         if (isNaN(s) || !isFinite(s)) return '0:00';
         const m = Math.floor(s / 60);
@@ -33,6 +35,8 @@
         return `${m}:${sec}`;
     }
 
+    // Shows a small toast notification at the bottom of the screen
+    // Used for errors so we don't use ugly browser alerts
     function showToast(msg) {
         let toast = document.querySelector('.toast');
         if (!toast) {
@@ -41,143 +45,208 @@
             document.body.appendChild(toast);
         }
         toast.textContent = msg;
-        requestAnimationFrame(() => {
-            toast.classList.add('visible');
-        });
+        // requestAnimationFrame waits for the browser to be ready to paint
+        // without this the CSS transition won't trigger properly
+        requestAnimationFrame(() => toast.classList.add('visible'));
         setTimeout(() => toast.classList.remove('visible'), 4000);
     }
 
-    // ── Custom Dropdowns ──────────────────────────────
+
+    // ── Dropdowns ─────────────────────────────────────
+
+    // This function handles open/close and selection for a single dropdown
+    // We call it twice — once for language, once for style
     function initDropdown(dropdownEl) {
         const trigger = dropdownEl.querySelector('.dropdown__trigger');
         const valueEl = dropdownEl.querySelector('.dropdown__value');
-        const items = dropdownEl.querySelectorAll('.dropdown__item');
+        const items   = dropdownEl.querySelectorAll('.dropdown__item');
 
-        // Toggle open/close
+        // When the trigger is clicked, toggle this dropdown open or closed
+        // e.stopPropagation() prevents the document click listener below from
+        // immediately closing it right after we open it
         trigger.addEventListener('click', (e) => {
             e.stopPropagation();
-            // Close other dropdowns first
+
+            // Close any other open dropdowns first
             document.querySelectorAll('.dropdown.open').forEach(d => {
                 if (d !== dropdownEl) d.classList.remove('open');
             });
+
             dropdownEl.classList.toggle('open');
         });
 
-        // Select item
+        // When a dropdown item is clicked, update the selected value
         items.forEach(item => {
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const val = item.dataset.value;
-                const label = item.textContent;
 
-                // Update visual state
+                // Mark this item as active, remove active from others
                 items.forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
-                valueEl.textContent = label;
-                dropdownEl.dataset.value = val;
 
-                // Close
+                // Show the selected label in the trigger button
+                valueEl.textContent = item.textContent;
+
+                // Store the actual value (e.g. "hindi") on the dropdown element
+                // We read this later when the user clicks Generate
+                dropdownEl.dataset.value = item.dataset.value;
+
                 dropdownEl.classList.remove('open');
             });
         });
     }
 
-    // Close dropdowns when clicking outside
+    // Close all dropdowns if user clicks anywhere outside them
     document.addEventListener('click', () => {
         document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
     });
 
-    // Close on Escape
+    // Also close dropdowns on Escape key
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
         }
     });
 
-    // Init both dropdowns
+    // Initialise both dropdowns
     initDropdown(dropdownLanguage);
     initDropdown(dropdownStyle);
 
-    textInput.addEventListener('input', checkGenerateEnabled);
 
-    function checkGenerateEnabled() {
-        const hasText = textInput.value.trim() !== '';
-        btnGenerate.disabled = !hasText;
-    }
+    // ── Generate button state ─────────────────────────
 
-    // ── Generate ──────────────────────────────────────
+    // Disable the generate button if the text input is empty
+    // Runs every time the user types something
+    textInput.addEventListener('input', () => {
+        btnGenerate.disabled = textInput.value.trim() === '';
+    });
+
+
+    // ── Main — Generate click ─────────────────────────
+
+    // We store the full transcript here after streaming is done
+    // We need it to send to /get-audio after streaming completes
+    let fullTranscript = '';
+
     btnGenerate.addEventListener('click', async () => {
-        const textValue = textInput.value.trim();
-        if (!textValue) return;
-
-        // Read values from custom dropdowns
+        const topic    = textInput.value.trim();
         const language = dropdownLanguage.dataset.value;
-        const style = dropdownStyle.dataset.value;
+        const style    = dropdownStyle.dataset.value;
 
-        // UI: loading
+        if (!topic) return;
+
+        // ── UI: set loading state ──
         btnGenerate.classList.add('loading');
         btnGenerate.disabled = true;
         btnLoader.classList.remove('hidden');
+
+        // Clear previous transcript and hide output while loading
+        transcriptBody.textContent = '';
+        fullTranscript = '';
         outputSection.classList.add('hidden');
 
-        const formData = new FormData();
-        formData.append('text', textValue);
-        formData.append('language', language);
-        formData.append('style', style);
-
+        // ── Step 1: Stream the explanation text ──
         try {
-            const res = await fetch('/upload-and-explain', {
+            // FormData is how we send form fields in a POST request
+            const formData = new FormData();
+            formData.append('text', topic);
+            formData.append('language', language);
+            formData.append('style', style);
+
+            const res = await fetch('/stream-explain', {
                 method: 'POST',
-                body: formData,
+                body: formData
             });
 
-            if (!res.ok) {
-                const err = await res.json().catch(() => null);
-                throw new Error(err?.error || 'Something went wrong.');
-            }
+            if (!res.ok) throw new Error('Explanation failed.');
 
-            const data = await res.json();
+            // res.body is a ReadableStream — data arrives in chunks
+            // getReader() gives us a way to read those chunks one by one
+            const reader = res.body.getReader();
 
-            // Set audio
-            const audioBlob = base64ToBlob(data.audio, 'audio/wav');
-            const audioUrl = URL.createObjectURL(audioBlob);
-            audioElement.src = audioUrl;
-            audioElement.load();
+            // TextDecoder converts raw bytes (Uint8Array) into readable text
+            const decoder = new TextDecoder();
 
-            // Set transcript
-            transcriptBody.textContent = data.transcript;
-
-            // Show output
+            // Show the output section now so user sees text appearing
             outputSection.classList.remove('hidden');
 
-            // Clear input and disable button
-            textInput.value = '';
-            btnGenerate.disabled = true;
+            // Keep reading chunks until the stream is done
+            while (true) {
+                // read() waits for the next chunk to arrive
+                // done = true means the stream has ended
+                // value = the chunk as a Uint8Array (raw bytes)
+                const { done, value } = await reader.read();
 
-            // Reset player state
-            resetPlayer();
+                if (done) break;
+
+                // Decode the bytes into a string
+                const chunk = decoder.decode(value, { stream: true });
+
+                // Append this chunk to the transcript on screen
+                transcriptBody.textContent += chunk;
+
+                // Also save it so we can send it to /get-audio later
+                fullTranscript += chunk;
+            }
+
         } catch (err) {
-            showToast(err.message || 'Generation failed.');
-        } finally {
+            showToast(err.message || 'Something went wrong.');
             btnGenerate.classList.remove('loading');
             btnGenerate.disabled = false;
             btnLoader.classList.add('hidden');
+            return;
         }
+
+        // ── Step 2: Get audio using the full transcript ──
+        try {
+            const audioForm = new FormData();
+            audioForm.append('text', fullTranscript);
+            audioForm.append('language', language);
+
+            const audioRes = await fetch('/get-audio', {
+                method: 'POST',
+                body: audioForm
+            });
+
+            if (!audioRes.ok) throw new Error('Audio generation failed.');
+
+            const audioData = await audioRes.json();
+
+            // Convert base64 string back to raw bytes
+            // atob() decodes a base64 string into a binary string
+            const byteChars = atob(audioData.audio);
+
+            // Convert the binary string into an actual byte array
+            const byteArray = new Uint8Array(byteChars.length);
+            for (let i = 0; i < byteChars.length; i++) {
+                byteArray[i] = byteChars.charCodeAt(i);
+            }
+
+            // Wrap the byte array in a Blob — a file-like object in the browser
+            const audioBlob = new Blob([byteArray], { type: 'audio/wav' });
+
+            // Create a temporary URL pointing to this blob
+            // so the audio element can play it
+            audioElement.src = URL.createObjectURL(audioBlob);
+            audioElement.load();
+
+            resetPlayer();
+
+        } catch (err) {
+            showToast(err.message || 'Audio failed.');
+        }
+
+        // ── UI: reset loading state ──
+        btnGenerate.classList.remove('loading');
+        btnGenerate.disabled = false;
+        btnLoader.classList.add('hidden');
+        textInput.value = '';
     });
 
-    function base64ToBlob(base64, mime) {
-        const byteChars = atob(base64);
-        const byteArrays = [];
-        for (let offset = 0; offset < byteChars.length; offset += 1024) {
-            const slice = byteChars.slice(offset, offset + 1024);
-            const byteNums = new Array(slice.length);
-            for (let i = 0; i < slice.length; i++) byteNums[i] = slice.charCodeAt(i);
-            byteArrays.push(new Uint8Array(byteNums));
-        }
-        return new Blob(byteArrays, { type: mime });
-    }
 
     // ── Audio Player ──────────────────────────────────
+
+    // Reset the player UI back to 0 when new audio is loaded
     function resetPlayer() {
         iconPlay.classList.remove('hidden');
         iconPause.classList.add('hidden');
@@ -187,6 +256,7 @@
         durationEl.textContent = '0:00';
     }
 
+    // Play or pause when the button is clicked
     playBtn.addEventListener('click', () => {
         if (audioElement.paused) {
             audioElement.play();
@@ -199,10 +269,12 @@
         }
     });
 
+    // Once audio metadata loads, show the total duration
     audioElement.addEventListener('loadedmetadata', () => {
         durationEl.textContent = formatTime(audioElement.duration);
     });
 
+    // As audio plays, update the progress bar and current time display
     audioElement.addEventListener('timeupdate', () => {
         if (!audioElement.duration) return;
         const pct = (audioElement.currentTime / audioElement.duration) * 100;
@@ -211,37 +283,18 @@
         currentTimeEl.textContent = formatTime(audioElement.currentTime);
     });
 
+    // When audio finishes, show the play icon again
     audioElement.addEventListener('ended', () => {
         iconPlay.classList.remove('hidden');
         iconPause.classList.add('hidden');
     });
 
-    // Click-to-seek on progress bar
+    // Click anywhere on the progress bar to jump to that position
     progressBar.addEventListener('click', (e) => {
         if (!audioElement.duration) return;
-        const rect = progressBar.getBoundingClientRect();
+        const rect  = progressBar.getBoundingClientRect();
         const ratio = (e.clientX - rect.left) / rect.width;
         audioElement.currentTime = ratio * audioElement.duration;
     });
 
-    // Drag-to-seek
-    let isDragging = false;
-    progressBar.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        seek(e);
-    });
-    document.addEventListener('mousemove', (e) => {
-        if (isDragging) seek(e);
-    });
-    document.addEventListener('mouseup', () => {
-        isDragging = false;
-    });
-
-    function seek(e) {
-        if (!audioElement.duration) return;
-        const rect = progressBar.getBoundingClientRect();
-        let ratio = (e.clientX - rect.left) / rect.width;
-        ratio = Math.max(0, Math.min(1, ratio));
-        audioElement.currentTime = ratio * audioElement.duration;
-    }
 })();
