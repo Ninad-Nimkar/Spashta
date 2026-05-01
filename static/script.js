@@ -87,7 +87,7 @@
                 // Show the selected label in the trigger button
                 valueEl.textContent = item.textContent;
 
-                // Store the actual value (e.g. "hindi") on the dropdown element
+                // Store the actual value (e.g. "English") on the dropdown element
                 // We read this later when the user clicks Generate
                 dropdownEl.dataset.value = item.dataset.value;
 
