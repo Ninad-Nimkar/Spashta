@@ -1,33 +1,37 @@
-from sarvamai import SarvamAI
 from openai import OpenAI
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv 
 from Services.prompt_builder import build_prompt
+
+#load the .env file so ve can access the API
 load_dotenv()
 
-API_KEY = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=API_KEY)
+#create the openai client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def summarize(text: str) -> str:
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-            messages= [{"role": "user", 
-                        "content": f'''
-            extract the core concepts from this content.
-            remove formatting, repetition and irrelevant text
-            {text}'''}],
-            max_tokens=1000,
-        )
+#this funtion streams the explanation chunk by chunk 
+#"yield" is what makes the generation, caller gets chunks one by one
+def explain(topic: str, style: str, language: str):
 
-    return response.choices[0].message.content
+    #build the full prompt using style and language
+    prompt = build_prompt(topic, style, language)
 
-def explain(summary: str, style: str, langauge: str) -> str:
-    prompt = build_prompt(summary, style, langauge)
+    
+    stream = client.chat.completions.create(
+        model="gpt-40-mini",
+        messages=[{"role": "user", "content": prompt}]
+        max_tokens=1000,
+        #stream=true tells openai to send the response in chuks
+        stream=True
+    )
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-            messages= [{"role": "user", "content": prompt}],
-            max_tokens=1000,
-        )
+    #loop thorugh each chunk as it arrives from openai
+    for chunk in stream:
+        #each chunk has a choice list, we want the first one
+        #delta.content is the new text in this chunk
+        text = chunk.choices[0].delta.content
 
-    return response.choices[0].message.content
+        #only yield if there's actual text
+        if text:
+            yield text
+
