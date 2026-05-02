@@ -11,10 +11,10 @@ load_dotenv()
 client = SarvamAI(api_subscription_key = os.getenv("SARVAM_API_KEY"))
 
 def generate_audio(text: str, language: str) -> bytes:
-    
+
     #get speaker and language code for the selected language
     #falls back to english is languiage not found
-    config = SPEAKER_BY_LANGAUGE.get(language, SPEAKER_BY_LANGAUGE["hindi"])
+    config = SPEAKER_BY_LANGAUGE.get(language, SPEAKER_BY_LANGAUGE["english"])
 
 
     audio = client.text_to_speech.convert(

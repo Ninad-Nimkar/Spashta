@@ -45,7 +45,7 @@ async def stream_explain(
 
     if not topic:
         return JSONResponse(
-            content={"error": "Np text provided"},
+            content={"error": "No text provided"},
             status_code=400
         )
 
@@ -68,7 +68,7 @@ async def get_audio(
     audio_bytes = generate_audio(text, language)
 
     #encode bytes to base64 string so it can be sent as JSON
-    audio_b64 = base64.b64decode(audio_bytes).decode("utf-8")
+    audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
 
     return JSONResponse(content={"audio": audio_b64})
 
