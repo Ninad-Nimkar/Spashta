@@ -18,7 +18,7 @@ def explain(topic: str, style: str, language: str):
 
     
     stream = client.chat.completions.create(
-        model="gpt-40-mini",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=1000,
         #stream=true tells openai to send the response in chuks
