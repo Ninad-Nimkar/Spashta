@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spashta - AI Learning Assistant</title>
+    <meta name="description"
+        content="Enter the Topic you want explanation on and get an AI-generated audio explanation in your preferred language and style." />
+    <link rel="icon" type="image/png" href="logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <!-- Ambient background glows -->
+    <div class="bg-glow bg-glow--1" aria-hidden="true"></div>
+    <div class="bg-glow bg-glow--2" aria-hidden="true"></div>
+    <div class="bg-glow bg-glow--3" aria-hidden="true"></div>
+
+    <main class="app" id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header__logo">
+                <img src="logo.png" alt="Spashta Logo" class="header__icon" />
+                <span class="header__title">Spashta<span class="header__title-dot">.</span></span>
+            </div>
+            <p class="header__tagline">AI-powered audio explanations in your desired language and style</p>
+        </header>
+
+        <!-- Upload Section -->
+        <section class="upload-section" id="upload-section">
+            <!-- Text Input -->
+            <textarea id="text-input" class="text-input" placeholder="Type or paste your notes here to get an explanation..."></textarea>
+
+            <!-- Controls row -->
+            <div class="controls">
+                <!-- Language Dropdown -->
+                <div class="control-group">
+                    <label class="control-label">Language</label>
+                    <div class="dropdown" id="dropdown-language" data-value="hindi">
+                        <button class="dropdown__trigger" type="button" id="language-trigger">
+                            <span class="dropdown__value">Hindi</span>
+                            <svg class="dropdown__chevron" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" />
+                            </svg>
+                        </button>
+                        <ul class="dropdown__menu" role="listbox">
+                            <li class="dropdown__item active" data-value="hindi" role="option">Hindi</li>
+                            <li class="dropdown__item" data-value="english" role="option">English</li>
+                            <li class="dropdown__item" data-value="hinglish" role="option">Hinglish</li>
+                            <li class="dropdown__item" data-value="marathi" role="option">Marathi</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Style Dropdown -->
+                <div class="control-group">
+                    <label class="control-label">Style</label>
+                    <div class="dropdown" id="dropdown-style" data-value="simple">
+                        <button class="dropdown__trigger" type="button" id="style-trigger">
+                            <span class="dropdown__value">Simple</span>
+                            <svg class="dropdown__chevron" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" />
+                            </svg>
+                        </button>
+                        <ul class="dropdown__menu" role="listbox">
+                            <li class="dropdown__item active" data-value="simple" role="option">Simple</li>
+                            <li class="dropdown__item" data-value="gamer" role="option">Gamer</li>
+                            <li class="dropdown__item" data-value="cricket" role="option">Cricket</li>
+                            <li class="dropdown__item" data-value="meme" role="option">Meme</li>
+                            <li class="dropdown__item" data-value="spiritual" role="option">Spiritual</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Generate Button -->
+            <button class="btn-generate" id="btn-generate" disabled>
+                <span class="btn-generate__text">Generate Explanation</span>
+                <div class="btn-generate__loader hidden" id="btn-loader">
+                    <span></span><span></span><span></span>
+                </div>
+            </button>
+        </section>
+
+        <!-- Output Section (hidden by default) -->
+        <section class="output-section hidden" id="output-section">
+            <!-- Audio Player -->
+            <div class="player" id="player">
+                <div class="player__header">
+                    <svg class="player__wave-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5" stroke-linecap="round">
+                        <line x1="4" y1="8" x2="4" y2="16" />
+                        <line x1="8" y1="5" x2="8" y2="19" />
+                        <line x1="12" y1="2" x2="12" y2="22" />
+                        <line x1="16" y1="5" x2="16" y2="19" />
+                        <line x1="20" y1="8" x2="20" y2="16" />
+                    </svg>
+                    <span class="player__title">Audio Explanation</span>
+                </div>
+                <div class="player__controls">
+                    <button class="player__play-btn" id="play-btn" aria-label="Play audio">
+                        <svg class="player__play-icon" id="icon-play" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="6,3 20,12 6,21" />
+                        </svg>
+                        <svg class="player__pause-icon hidden" id="icon-pause" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="5" y="3" width="4" height="18" />
+                            <rect x="15" y="3" width="4" height="18" />
+                        </svg>
+                    </button>
+                    <div class="player__track">
+                        <div class="player__progress-bar" id="progress-bar">
+                            <div class="player__progress" id="progress"></div>
+                            <div class="player__thumb" id="thumb"></div>
+                        </div>
+                        <div class="player__times">
+                            <span id="current-time">0:00</span>
+                            <span id="duration">0:00</span>
+                        </div>
+                    </div>
+                </div>
+                <audio id="audio-element"></audio>
+            </div>
+
+            <!-- Transcript -->
+            <div class="transcript" id="transcript">
+                <h2 class="transcript__heading">Transcript</h2>
+                <div class="transcript__body" id="transcript-body"></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
