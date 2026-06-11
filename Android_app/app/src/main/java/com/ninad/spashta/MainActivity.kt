@@ -10,9 +10,6 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
-
-    // To use a remote URL: "https://spashta.azurewebsites.net/"
-    // To use local files: "file:///android_asset/index.html"
     private val siteUrl = "file:///android_asset/index.html"
 
     private lateinit var webView: WebView
